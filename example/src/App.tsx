@@ -93,7 +93,7 @@ export default function App() {
     <View style={style.container}>
       <Text style={style.title}>React Native Thermal Printer</Text>
 
-      <View style={style.formfield}>
+      <View style={style.formfieldcol}>
         <Text>IP Address</Text>
         <TextInput
           value={state.ip}
@@ -103,7 +103,7 @@ export default function App() {
         />
       </View>
 
-      <View style={style.formfield}>
+      <View style={style.formfieldcol}>
         <Text>Port</Text>
         <TextInput
           value={state.port.toString()}
@@ -131,15 +131,19 @@ const style = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
     padding: 16,
+    gap: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   formfield: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 5,
+  },
+  formfieldcol: {
     gap: 5,
   },
   input: {
