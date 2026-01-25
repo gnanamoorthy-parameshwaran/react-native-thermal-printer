@@ -1,18 +1,19 @@
-buildscript {
-  ext.ThermalPrinter = [
-    kotlinVersion: "2.0.21",
-    minSdkVersion: 24,
-    compileSdkVersion: 36,
-    targetSdkVersion: 36
-  ]
+ext.ThermalPrinter = [
+  kotlinVersion: "2.0.21",
+  minSdkVersion: 24,
+  compileSdkVersion: 36,
+  targetSdkVersion: 36
+]
 
-  ext.getExtOrDefault = { prop ->
-    if (rootProject.ext.has(prop)) {
-      return rootProject.ext.get(prop)
-    }
-
-    return ThermalPrinter[prop]
+ext.getExtOrDefault = { prop ->
+  if (rootProject.ext.has(prop)) {
+    return rootProject.ext.get(prop)
   }
+
+  return ThermalPrinter[prop]
+}
+
+buildscript {
 
   repositories {
     google()
