@@ -16,18 +16,16 @@ class ThermalPrinterPackage : BaseReactPackage() {
     }
   }
 
-  override fun getReactModuleInfoProvider(): ReactModuleInfoProvider {
-    return ReactModuleInfoProvider {
-      val moduleInfos: MutableMap<String, ReactModuleInfo> = HashMap()
-      moduleInfos[ThermalPrinterModule.NAME] = ReactModuleInfo(
-        ThermalPrinterModule.NAME,
-        ThermalPrinterModule.NAME,
-        false,  // canOverrideExistingModule
-        false,  // needsEagerInit
-        false,  // isCxxModule
-        true // isTurboModule
+  override fun getReactModuleInfoProvider() = ReactModuleInfoProvider {
+    mapOf(
+      ThermalPrinterModule.NAME to ReactModuleInfo(
+        name = ThermalPrinterModule.NAME,
+        className = ThermalPrinterModule.NAME,
+        canOverrideExistingModule = false,
+        needsEagerInit = false,
+        isCxxModule = false,
+        isTurboModule = true
       )
-      moduleInfos
-    }
+    )
   }
 }
