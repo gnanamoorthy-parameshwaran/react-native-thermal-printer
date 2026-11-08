@@ -1,427 +1,200 @@
 import React from 'react';
 import {
-  Text,
-  View,
-  StyleSheet,
-  Button,
-  TextInput,
-  ScrollView,
   Alert,
+  Button,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import ThermalPrinterAPI, {
-  type ReceiptData,
+import {
+  checkConnection,
+  PAPER_80MM,
+  preview,
+  print,
+  type PreviewResult,
+  type ReceiptElement,
+  type RenderMode,
+  type RowElement,
 } from 'react-native-thermal-printer';
 
+// 80mm paper: 48 columns. Item 22 + Qty 6 + Rate 9 + Amount 11 = 48.
+const item = (
+  name: string,
+  qty: string,
+  rate: string,
+  amount: string
+): RowElement => ({
+  type: 'row',
+  columns: [
+    { text: name, width: 22 },
+    { text: qty, width: 6, align: 'right' },
+    { text: rate, width: 9, align: 'right' },
+    { text: amount, width: 11, align: 'right' },
+  ],
+});
+
+const bill: ReceiptElement[] = [
+  { type: 'text', value: 'அன்னை மளிகை', align: 'center', bold: true, size: 2 },
+  { type: 'text', value: '12, Gandhi Road, Madurai', align: 'center' },
+  { type: 'text', value: 'Bill #1042   01-11-2026 10:42', align: 'center' },
+  { type: 'divider' },
+  item('Item', 'Qty', 'Rate', 'Amount'),
+  { type: 'divider' },
+  item('தக்காளி (Tomato)', '2 kg', '40.00', '80.00'),
+  item('வெங்காயம்', '1 kg', '35.00', '35.00'),
+  item('பொன்னி அரிசி 25 கிலோ மூட்டை', '1', '1450.00', '1450.00'),
+  item('Sugar', '1 kg', '45.00', '45.00'),
+  { type: 'divider' },
+  {
+    type: 'row',
+    columns: [
+      { text: 'மொத்தம்', width: 30, bold: true },
+      { text: '₹1610.00', width: 18, align: 'right', bold: true },
+    ],
+  },
+  { type: 'divider', char: '=' },
+  { type: 'text', value: 'நன்றி! மீண்டும் வருக', align: 'center' },
+  { type: 'cut' },
+];
+
+const MODES: RenderMode[] = ['auto', 'image', 'text'];
+
 export default function App() {
-  const [state, setState] = React.useState({
-    ip: '192.168.1.100',
-    port: 9100,
-    timeout: 5000,
-    connected: false,
-  });
-  const [loading, setLoading] = React.useState(false);
+  const [host, setHost] = React.useState('192.168.1.23');
+  const [port, setPort] = React.useState('9100');
+  const [mode, setMode] = React.useState<RenderMode>('auto');
+  const [image, setImage] = React.useState<PreviewResult | null>(null);
+  const [busy, setBusy] = React.useState(false);
 
-  /**
-   * Connect to the thermal printer
-   */
-  const handleConnect = async () => {
+  // The top gap is the head-to-cutter distance; the bottom margin is set to match it.
+  const [topGap, setTopGap] = React.useState('13');
+
+  const printer = { host, port: Number(port) || 9100 };
+  const profile = {
+    ...PAPER_80MM,
+    cutterDistanceMm: Number(topGap) || 13,
+  };
+
+  const run = async (task: () => Promise<void>) => {
+    setBusy(true);
     try {
-      setLoading(true);
-      const result = await ThermalPrinterAPI.connect({
-        ip: state.ip,
-        port: state.port,
-        timeout: state.timeout,
-      });
-      setState({ ...state, connected: true });
-      Alert.alert('Success', result);
-    } catch (error: any) {
-      Alert.alert('Connection Error', error.message);
+      await task();
+    } catch (e: any) {
+      Alert.alert(e.code ?? 'Error', e.message);
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
 
-  /**
-   * Disconnect from the printer
-   */
-  const handleDisconnect = async () => {
-    try {
-      setLoading(true);
-      const result = await ThermalPrinterAPI.disconnect();
-      setState({ ...state, connected: false });
-      Alert.alert('Success', result);
-    } catch (error: any) {
-      Alert.alert('Disconnection Error', error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Print a sample receipt using the new engine
-   */
-  const handlePrint = async () => {
-    try {
-      setLoading(true);
-
-      // Create a receipt using the new engine JSON schema
-      const receipt: ReceiptData = {
-        config: {
-          charsPerLine: 48, // Extended width for better table spacing
-        },
-        elements: [
-          {
-            type: 'text',
-            value: 'Welcome to Store',
-            align: 'center',
-            bold: true,
-          },
-          {
-            type: 'linefeed',
-          },
-          {
-            type: 'text',
-            value: '123 Main Street, City',
-            align: 'center',
-          },
-          {
-            type: 'text',
-            value: 'Phone: +1-234-567-8900',
-            align: 'center',
-          },
-          {
-            type: 'linefeed',
-          },
-          // Items table
-          {
-            type: 'row',
-            columns: [
-              { text: 'Item', width: 28, align: 'left' },
-              { text: 'Qty', width: 10, align: 'center' },
-              { text: 'Price', width: 10, align: 'right' },
-            ],
-          },
-          {
-            type: 'divider',
-            char: '-',
-          },
-          {
-            type: 'row',
-            columns: [
-              {
-                text: 'Coffee is good for health and not that easy',
-                width: 28,
-                align: 'left',
-              },
-              { text: '2', width: 10, align: 'center' },
-              { text: '$5.00', width: 10, align: 'right' },
-            ],
-          },
-          {
-            type: 'row',
-            columns: [
-              { text: 'Pastry', width: 28, align: 'left' },
-              { text: '1', width: 10, align: 'center' },
-              { text: '$3.50', width: 10, align: 'right' },
-            ],
-          },
-          {
-            type: 'divider',
-            char: '-',
-          },
-          {
-            type: 'row',
-            columns: [
-              { text: 'Total', width: 28, align: 'right', bold: true },
-              { text: '$8.50', width: 20, align: 'right', bold: true },
-            ],
-          },
-          {
-            type: 'linefeed',
-          },
-          {
-            type: 'linefeed',
-          },
-          {
-            type: 'text',
-            value: 'Thank you for your purchase!',
-            align: 'center',
-          },
-          {
-            type: 'linefeed',
-            count: 6,
-          },
-          {
-            type: 'cut',
-          },
-        ],
-      };
-
-      const byteCount = await ThermalPrinterAPI.print(receipt);
-      Alert.alert(
-        'Print Success',
-        `Receipt printed successfully.\nBytes sent: ${byteCount}`
-      );
-    } catch (error: any) {
-      Alert.alert('Print Error', error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Get ESC/POS bytes for debugging
-   */
-  const handleDebug = async () => {
-    try {
-      setLoading(true);
-
-      const receipt: ReceiptData = {
-        config: {
-          charsPerLine: 32,
-        },
-        elements: [
-          {
-            type: 'text',
-            value: 'Test Receipt',
-            align: 'center',
-            bold: true,
-          },
-          {
-            type: 'linefeed',
-          },
-          {
-            type: 'text',
-            value: 'ESC/POS Bytes Debug',
-            align: 'left',
-          },
-          {
-            type: 'cut',
-          },
-        ],
-      };
-
-      const hexBytes = await ThermalPrinterAPI.getEscPosBytes(receipt);
-      Alert.alert('ESC/POS Bytes', `${hexBytes.substring(0, 200)}...`);
-    } catch (error: any) {
-      Alert.alert('Debug Error', error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  React.useEffect(() => {
+    preview(bill, { mode }).then(setImage, () => setImage(null));
+  }, [mode]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>React Native Thermal Printer</Text>
-      <Text style={styles.subtitle}>Professional Kotlin Engine</Text>
+      <Text style={styles.title}>Thermal Printer</Text>
 
-      {/* Connection Status */}
-      <View style={styles.statusBox}>
-        <Text style={styles.statusLabel}>Status:</Text>
-        <Text
-          style={[
-            styles.statusText,
-            { color: state.connected ? '#4CAF50' : '#f44336' },
-          ]}
-        >
-          {state.connected ? '✓ Connected' : '✗ Disconnected'}
-        </Text>
-      </View>
+      <Text style={styles.label}>Printer IP</Text>
+      <TextInput style={styles.input} value={host} onChangeText={setHost} />
+      <Text style={styles.label}>Port</Text>
+      <TextInput
+        style={styles.input}
+        value={port}
+        onChangeText={setPort}
+        keyboardType="numeric"
+      />
+      <Text style={styles.label}>Measured top gap (mm)</Text>
+      <TextInput
+        style={styles.input}
+        value={topGap}
+        onChangeText={setTopGap}
+        keyboardType="decimal-pad"
+      />
 
-      {/* IP Address Input */}
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Printer IP Address</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="192.168.1.23"
-          value={state.ip}
-          onChangeText={(text) => setState({ ...state, ip: text })}
-          editable={!state.connected}
-        />
-      </View>
-
-      {/* Port Input */}
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Port</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="9100"
-          value={state.port.toString()}
-          keyboardType="numeric"
-          onChangeText={(text) => setState({ ...state, port: parseInt(text) })}
-          editable={!state.connected}
-        />
-      </View>
-
-      {/* Timeout Input */}
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Timeout (ms)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="5000"
-          value={state.timeout.toString()}
-          keyboardType="numeric"
-          onChangeText={(text) =>
-            setState({ ...state, timeout: parseInt(text) })
-          }
-          editable={!state.connected}
-        />
-      </View>
-
-      {/* Action Buttons */}
-      <View style={styles.buttonGroup}>
-        {!state.connected ? (
-          <Button
-            title="Connect"
-            onPress={handleConnect}
-            disabled={loading || !state.ip}
-            color="#2196F3"
-          />
-        ) : (
-          <Button
-            title="Disconnect"
-            onPress={handleDisconnect}
-            disabled={loading}
-            color="#f44336"
-          />
-        )}
-      </View>
-
-      {state.connected && (
-        <>
-          <View style={styles.divider} />
-
-          <View style={styles.buttonGroup}>
+      <Text style={styles.label}>Render mode</Text>
+      <View style={styles.row}>
+        {MODES.map((m) => (
+          <View key={m} style={styles.flex}>
             <Button
-              title="Print Receipt"
-              onPress={handlePrint}
-              disabled={loading}
-              color="#4CAF50"
+              title={m}
+              color={m === mode ? '#2196F3' : '#9E9E9E'}
+              onPress={() => setMode(m)}
             />
           </View>
+        ))}
+      </View>
 
-          <View style={styles.buttonGroup}>
-            <Button
-              title="Debug: Show ESC/POS Bytes"
-              onPress={handleDebug}
-              disabled={loading}
-              color="#FF9800"
-            />
-          </View>
+      <View style={styles.row}>
+        <View style={styles.flex}>
+          <Button
+            title="Check"
+            disabled={busy}
+            onPress={() =>
+              run(async () => {
+                const ok = await checkConnection(printer);
+                Alert.alert(ok ? 'Printer reachable' : 'Printer not reachable');
+              })
+            }
+          />
+        </View>
+        <View style={styles.flex}>
+          <Button
+            title="Print"
+            color="#4CAF50"
+            disabled={busy}
+            onPress={() =>
+              run(async () => {
+                const r = await print(printer, bill, { mode, profile });
+                Alert.alert(
+                  'Printed',
+                  `${r.bytesSent} bytes, ${r.imageBlocks} image blocks, ` +
+                    `${r.attempts} attempt(s)`
+                );
+              })
+            }
+          />
+        </View>
+      </View>
 
-          <View style={styles.infoBox}>
-            <Text style={styles.infoTitle}>Info:</Text>
-            <Text style={styles.infoText}>
-              • Prints a sample receipt with items, total, and cut command
-            </Text>
-            <Text style={styles.infoText}>
-              • Receipt data follows the thermal printer engine JSON schema
-            </Text>
-            <Text style={styles.infoText}>
-              • Supports text, rows, linefeeds, and cut commands
-            </Text>
-          </View>
-        </>
+      {image && (
+        <View style={styles.paper}>
+          <Image
+            source={{ uri: `data:image/png;base64,${image.base64}` }}
+            style={[
+              styles.preview,
+              { aspectRatio: image.width / image.height },
+            ]}
+            resizeMode="contain"
+          />
+        </View>
       )}
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          React Native Thermal Printer v0.1.0
-        </Text>
-      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
-  },
-  statusBox: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    elevation: 2,
-  },
-  statusLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  formGroup: {
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 6,
-  },
+  container: { padding: 16, backgroundColor: '#f5f5f5', flexGrow: 1 },
+  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 12, color: '#333' },
+  label: { fontSize: 12, fontWeight: '600', color: '#333', marginTop: 8 },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 6,
     padding: 10,
-    fontSize: 14,
+    marginTop: 4,
   },
-  buttonGroup: {
-    marginVertical: 8,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#ddd',
-    marginVertical: 16,
-  },
-  infoBox: {
-    backgroundColor: '#e3f2fd',
-    borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
-    padding: 12,
-    borderRadius: 4,
+  row: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  flex: { flex: 1 },
+  paper: {
     marginTop: 16,
+    backgroundColor: '#fff',
+    padding: 8,
+    borderRadius: 4,
+    elevation: 2,
   },
-  infoTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#1976D2',
-    marginBottom: 6,
-  },
-  infoText: {
-    fontSize: 12,
-    color: '#1565C0',
-    marginBottom: 4,
-  },
-  footer: {
-    marginTop: 32,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#999',
-  },
+  preview: { width: '100%' },
 });
