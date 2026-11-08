@@ -20,7 +20,7 @@ import {
   type ReceiptElement,
   type RenderMode,
   type RowElement,
-} from 'react-native-thermal-printer';
+} from '@gnanamoorthy/react-native-thermal-printer';
 
 type Lang = 'english' | 'tamil';
 

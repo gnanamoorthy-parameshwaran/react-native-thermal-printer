@@ -1,5 +1,5 @@
 {
-  "name": "react-native-thermal-printer",
+  "name": "@gnanamoorthy/react-native-thermal-printer",
   "version": "0.1.0",
   "description": "Print receipts in any language, including Tamil, on ESC/POS thermal printers from React Native.",
   "main": "./lib/module/index.js",

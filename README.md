@@ -1,19 +1,23 @@
-# react-native-thermal-printer
+# @gnanamoorthy/react-native-thermal-printer
 
 Print receipts in any language, including Tamil, on ESC/POS thermal printers from React Native.
 
 ## Installation
 
+Install from a GitHub release tag. npm builds the package on install.
+
 ```sh
-npm install react-native-thermal-printer
+npm install github:gnanamoorthy-parameshwaran/react-native-thermal-printer#v0.1.0
 ```
+
+Then rebuild the native app (`npx expo run:android` for Expo dev-client apps, or `npx react-native run-android`).
 
 ## Usage
 
 Android only for now; network (Wi-Fi/LAN, port 9100) printers.
 
 ```ts
-import { createPrinter } from 'react-native-thermal-printer';
+import { createPrinter } from '@gnanamoorthy/react-native-thermal-printer';
 
 const printer = createPrinter({ host: '192.168.1.23' });
 

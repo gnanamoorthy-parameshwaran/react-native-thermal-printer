@@ -2,7 +2,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "paths": {
-      "react-native-thermal-printer": ["./src/index"]
+      "@gnanamoorthy/react-native-thermal-printer": ["./src/index"]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,

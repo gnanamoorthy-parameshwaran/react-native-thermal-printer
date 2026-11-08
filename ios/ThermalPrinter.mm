@@ -3,7 +3,7 @@
 // iOS isn't implemented yet; every call rejects so apps can feature-detect.
 static void rejectUnsupported(RCTPromiseRejectBlock reject)
 {
-  reject(@"UNSUPPORTED", @"react-native-thermal-printer is Android-only for now", nil);
+  reject(@"UNSUPPORTED", @"@gnanamoorthy/react-native-thermal-printer is Android-only for now", nil);
 }
 
 @implementation ThermalPrinter

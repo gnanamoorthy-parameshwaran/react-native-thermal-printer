@@ -25,7 +25,7 @@ The [example app](/example/) demonstrates usage of the library. You need to run 
 
 It is configured to use the local version of the library, so any changes you make to the library's source code will be reflected in the example app. Changes to the library's JavaScript code will be reflected in the example app without a rebuild, but native code changes will require a rebuild of the example app.
 
-If you want to use Android Studio or Xcode to edit the native code, you can open the `example/android` or `example/ios` directories respectively in those editors. To edit the Objective-C or Swift files, open `example/ios/ThermalPrinterExample.xcworkspace` in Xcode and find the source files at `Pods > Development Pods > react-native-thermal-printer`.
+If you want to use Android Studio or Xcode to edit the native code, you can open the `example/android` or `example/ios` directories respectively in those editors. To edit the Objective-C or Swift files, open `example/ios/ThermalPrinterExample.xcworkspace` in Xcode and find the source files at `Pods > Development Pods > ThermalPrinter`.
 
 To edit the Java or Kotlin files, open `example/android` in Android studio and find the source files at `react-native-thermal-printer` under `Android`.
 
@@ -87,7 +87,6 @@ Remember to add tests for your change if possible. Run the unit tests by:
 yarn test
 ```
 
-
 ### Commit message convention
 
 We follow the [conventional commits specification](https://www.conventionalcommits.org/en) for our commit messages:
@@ -101,7 +100,6 @@ We follow the [conventional commits specification](https://www.conventionalcommi
 
 Our pre-commit hooks verify that your commit message matches this format when committing.
 
-
 ### Publishing to npm
 
 We use [release-it](https://github.com/release-it/release-it) to make it easier to publish new versions. It handles common tasks like bumping version based on semver, creating tags and releases etc.
@@ -111,7 +109,6 @@ To publish new versions, run the following:
 ```sh
 yarn release
 ```
-
 
 ### Scripts
 
@@ -126,7 +123,7 @@ The `package.json` file contains various scripts for common tasks:
 - `yarn example ios`: run the example app on iOS.
   - `yarn example web`: run the example app on Web.
 - `yarn example build:web`: build the example app for Web.
-  
+
 ### Sending a pull request
 
 > **Working on your first pull request?** You can learn how from this _free_ series: [How to Contribute to an Open Source Project on GitHub](https://app.egghead.io/playlists/how-to-contribute-to-an-open-source-project-on-github).
