@@ -45,6 +45,14 @@ Column widths are always in characters, so a receipt lays out the same in every 
 
 To use your own font for image text, put it in `android/app/src/main/assets/fonts/` and pass `{ image: { font: 'fonts/NotoSansTamil-Regular.ttf', fontSize: 28 } }`.
 
+### Styling
+
+- `invert: true` on a `text` or `row` prints white on a full-width black band. Use it for the shop name or the grand total.
+- `spaceAfter` on a `text`, `row` or `divider` leaves blank paper below it, in dots (8 dots = 1 mm). Around 12 dots between line items makes them easy to tell apart.
+- `bold`, `underline` and `size: 2` (on `text`) work as you'd expect.
+
+For Tamil bills, `image` mode gives the most consistent look, because every line uses the same font. In `auto` mode, English-only lines use the printer's own font.
+
 ### Several devices, one printer
 
 Each `print` call opens a connection, sends the whole bill, and closes it. If another device is printing, the call retries for about 12 seconds before rejecting with `PRINTER_UNREACHABLE`. A `PRINT_INTERRUPTED` error means the connection dropped mid-bill; it isn't retried, because the bill may have partly printed.

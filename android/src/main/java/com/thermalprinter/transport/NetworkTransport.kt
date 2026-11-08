@@ -2,6 +2,7 @@ package com.thermalprinter.transport
 
 import com.thermalprinter.engine.NetworkPrinter
 import java.io.IOException
+import java.io.InputStream
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
@@ -46,20 +47,41 @@ class NetworkTransport(
   }
 
   /**
-   * Waits until the printer has processed everything sent. Many printers discard unprocessed data
-   * when the connection closes, which cuts the bill short. GS r is answered in order, after all
-   * earlier data; printers that ignore it are given [timeoutMs] instead.
+   * Waits until the printer has finished the job. Many printers discard unprocessed data when the
+   * connection closes, which cuts the bill short.
+   *
+   * ESC v is answered when the printer reaches it in its queue, so the first reply means the whole
+   * job has been parsed; while the paper is still moving the reply has [BUSY] set. Printers that
+   * don't answer get [timeoutMs] instead.
    */
   private fun awaitDrained(socket: Socket, timeoutMs: Int) {
-    socket.soTimeout = timeoutMs
+    val deadline = System.nanoTime() + timeoutMs * 1_000_000L
     val input = socket.getInputStream()
-    try {
+    val output = socket.getOutputStream()
+    var status = readStatus(socket, input, timeoutMs) ?: return
+    while (status and BUSY != 0) {
+      val remainingMs = ((deadline - System.nanoTime()) / 1_000_000).toInt()
+      if (remainingMs <= 0) return
+      sleep(POLL_MS)
+      output.write(STATUS_REQUEST)
+      output.flush()
+      status = readStatus(socket, input, remainingMs) ?: return
+    }
+  }
+
+  /** Reads one status reply, or null on timeout. */
+  private fun readStatus(socket: Socket, input: InputStream, timeoutMs: Int): Int? {
+    socket.soTimeout = timeoutMs.coerceAtLeast(1)
+    val first = try {
       input.read()
     } catch (e: SocketTimeoutException) {
-      return
+      return null
     }
-    // Leftover unread bytes would make close() send a reset instead of a normal close.
+    if (first < 0) return null
+    // Replies vary in length between printers; unread bytes would also make close() send a reset.
+    sleep(REPLY_SETTLE_MS)
     while (input.available() > 0) input.skip(input.available().toLong())
+    return first
   }
 
   /** Whether the printer accepts a connection right now. Doesn't retry. */
@@ -98,7 +120,13 @@ class NetworkTransport(
     minOf(2000L, 250L shl (attempt - 1).coerceAtMost(4)) + random.nextLong(0, 200)
 
   internal companion object {
-    /** GS r 1: transmit paper sensor status. */
-    val STATUS_REQUEST = byteArrayOf(0x1D, 0x72, 0x01)
+    /** ESC v: transmit paper sensor status. */
+    val STATUS_REQUEST = byteArrayOf(0x1B, 0x76)
+
+    /** Set in the ESC v reply while the printer is still printing, feeding or cutting. */
+    const val BUSY = 0x40
+
+    const val POLL_MS = 50L
+    const val REPLY_SETTLE_MS = 5L
   }
 }

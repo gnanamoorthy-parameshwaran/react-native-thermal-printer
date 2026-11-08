@@ -14,6 +14,7 @@ class EscPosEncoder(private val profile: PrinterProfile) {
         is Block.Text -> block.lines.forEach { out.line(it) }
         is Block.Image -> out.image(block.image)
         is Block.Feed -> out.cmd(ESC, 'd'.code, block.lines.coerceIn(0, 255))
+        is Block.Space -> out.feedDots(block.dots)
         // Plain feed + GS V 0: the feed-and-cut variant (GS V 66) is ignored by many printers.
         Block.Cut -> {
           out.cmd(ESC, '2'.code) // default 1/6 inch line spacing, which cutFeedLines assumes
@@ -27,6 +28,7 @@ class EscPosEncoder(private val profile: PrinterProfile) {
 
   private fun ByteArrayOutputStream.line(line: TextLine) {
     cmd(ESC, 'a'.code, line.align.ordinal)
+    if (line.invert) cmd(GS, 'B'.code, 1)
     cmd(GS, '!'.code, if (line.size == 2) 0x11 else 0x00)
     for (segment in line.segments) {
       cmd(ESC, 'E'.code, if (segment.style.bold) 1 else 0)
@@ -36,7 +38,18 @@ class EscPosEncoder(private val profile: PrinterProfile) {
     cmd(ESC, 'E'.code, 0)
     cmd(ESC, '-'.code, 0)
     cmd(GS, '!'.code, 0)
+    if (line.invert) cmd(GS, 'B'.code, 0)
     write(LF)
+  }
+
+  /** ESC J, at most 255 per command. Some printers count it in half dots, so this is approximate. */
+  private fun ByteArrayOutputStream.feedDots(dots: Int) {
+    var rest = dots
+    while (rest > 0) {
+      val n = minOf(255, rest)
+      cmd(ESC, 'J'.code, n)
+      rest -= n
+    }
   }
 
   private fun ByteArrayOutputStream.image(image: MonoImage) {

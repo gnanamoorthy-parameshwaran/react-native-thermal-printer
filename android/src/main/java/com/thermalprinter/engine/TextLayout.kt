@@ -8,6 +8,8 @@ data class TextLine(
   val segments: List<Segment>,
   val align: Align = Align.LEFT,
   val size: Int = 1,
+  /** White on black (GS B). Inverted lines are padded to full width so the band spans the paper. */
+  val invert: Boolean = false,
 ) {
   val length: Int get() = segments.sumOf { it.text.length }
 }
@@ -18,16 +20,26 @@ data class TextLine(
  */
 object TextLayout {
 
-  fun text(element: PrintElement.Text, charsPerLine: Int): List<TextLine> =
-    wrap(element.value, charsPerLine / element.size).map {
-      TextLine(listOf(Segment(it, element.style)), element.align, element.size)
+  fun text(element: PrintElement.Text, charsPerLine: Int): List<TextLine> {
+    val width = charsPerLine / element.size
+    return wrap(element.value, width).map {
+      if (element.invert) {
+        val padded = cell(it, Column(it, width, element.align, element.style))
+        TextLine(padded, Align.LEFT, element.size, invert = true)
+      } else {
+        TextLine(listOf(Segment(it, element.style)), element.align, element.size)
+      }
     }
+  }
 
   fun row(row: PrintElement.Row): List<TextLine> {
     val wrapped = row.columns.map { wrap(it.text, it.width) }
     val count = wrapped.maxOf { it.size }
     return (0 until count).map { i ->
-      TextLine(row.columns.flatMapIndexed { c, column -> cell(wrapped[c].getOrElse(i) { "" }, column) })
+      TextLine(
+        row.columns.flatMapIndexed { c, column -> cell(wrapped[c].getOrElse(i) { "" }, column) },
+        invert = row.invert,
+      )
     }
   }
 

@@ -31,14 +31,34 @@ class AndroidRasterizer(
   override fun rasterize(element: PrintElement, profile: PrinterProfile): MonoImage =
     when (element) {
       is PrintElement.Text -> {
-        val layout = layout(element.value, paint(element.style, fontSize * element.size), profile.dotsPerLine, element.align)
-        draw(profile.dotsPerLine, layout.height) { layout.draw(it) }
+        // Inverted text keeps clear of the band's edges.
+        val inset = if (element.invert) profile.dotsPerChar else 0
+        val width = profile.dotsPerLine - 2 * inset
+        val paint = paint(element.style, fontSize * element.size)
+        // A line that only just overflows is drawn slightly smaller instead of wrapping a word.
+        val full = paint.measureText(element.value)
+        if (full > width && full * NEAR_FIT <= width) paint.textSize *= width / full * 0.98f
+        val layout = layout(element.value, paint, width, element.align)
+        draw(profile.dotsPerLine, layout.height) { canvas ->
+          canvas.translate(inset.toFloat(), 0f)
+          layout.draw(canvas)
+        }
       }
       is PrintElement.Row -> {
+        // Columns are sized in built-in-font chars, but this font is wider, so neighbours keep a
+        // gap and a word too wide for its cell is drawn smaller rather than broken or overlapping.
+        // The gap sits on the left only, so right-aligned amounts line up with text-mode rows.
+        val gap = profile.dotsPerChar
+        // Inverted rows keep clear of the band's edges.
+        val inset = if (element.invert) profile.dotsPerChar else 0
+        val last = element.columns.lastIndex
         var left = 0
-        val cells = element.columns.map { column ->
+        val cells = element.columns.mapIndexed { i, column ->
           val width = column.width * profile.dotsPerChar
-          val cell = left to layout(column.text, paint(column.style, fontSize), width, column.align)
+          val padLeft = if (i > 0) gap else inset
+          val inner = width - padLeft - (if (i == last) inset else 0)
+          val paint = fitted(column.text, paint(column.style, fontSize), inner)
+          val cell = left + padLeft to layout(column.text, paint, inner, column.align)
           left += width
           cell
         }
@@ -88,6 +108,18 @@ class AndroidRasterizer(
     isUnderlineText = style.underline
   }
 
+  /**
+   * Shrinks [paint] so the widest word fits [width], down to [MIN_SCALE]; past that, words break.
+   * Keeps numbers like 99999.00 whole and inside their column.
+   */
+  private fun fitted(text: String, paint: TextPaint, width: Int): TextPaint {
+    val widest = text.split(Regex("\\s+")).maxOfOrNull { paint.measureText(it) } ?: return paint
+    if (widest <= width) return paint
+    // A little under the exact ratio: StaticLayout's rounding wraps a word that fits exactly.
+    paint.textSize *= maxOf(MIN_SCALE, width / widest * 0.96f)
+    return paint
+  }
+
   private fun monospace(segment: Segment, cellWidth: Float) = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
     color = Color.BLACK
     typeface = Typeface.MONOSPACE
@@ -122,5 +154,12 @@ class AndroidRasterizer(
     } finally {
       bitmap.recycle()
     }
+  }
+
+  private companion object {
+    const val MIN_SCALE = 0.6f
+
+    /** How much a single line may shrink to avoid wrapping. */
+    const val NEAR_FIT = 0.85f
   }
 }

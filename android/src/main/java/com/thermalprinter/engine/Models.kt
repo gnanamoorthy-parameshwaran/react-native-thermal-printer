@@ -18,17 +18,26 @@ enum class RenderMode {
 data class TextStyle(val bold: Boolean = false, val underline: Boolean = false)
 
 sealed class PrintElement {
-  /** A paragraph; wraps to the paper width. [size] 2 is double width and height. */
+  /**
+   * A paragraph; wraps to the paper width. [size] 2 is double width and height. [invert] prints
+   * white on a full-width black band. [spaceAfter] is blank paper below, in dots (8 per mm).
+   */
   data class Text(
     val value: String,
     val align: Align = Align.LEFT,
     val style: TextStyle = TextStyle(),
     val size: Int = 1,
+    val invert: Boolean = false,
+    val spaceAfter: Int = 0,
   ) : PrintElement()
 
-  data class Row(val columns: List<Column>) : PrintElement()
+  data class Row(
+    val columns: List<Column>,
+    val invert: Boolean = false,
+    val spaceAfter: Int = 0,
+  ) : PrintElement()
 
-  data class Divider(val char: Char = '-') : PrintElement()
+  data class Divider(val char: Char = '-', val spaceAfter: Int = 0) : PrintElement()
 
   data class Feed(val lines: Int = 1) : PrintElement()
 

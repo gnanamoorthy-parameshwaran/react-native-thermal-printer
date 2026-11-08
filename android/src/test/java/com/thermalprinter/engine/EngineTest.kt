@@ -22,6 +22,25 @@ private class FakeRasterizer(private val height: Int = 10) : Rasterizer {
 class JobParserTest {
 
   @Test
+  fun `parses invert and spacing`() {
+    val job = JobParser.job(
+      """{"elements":[
+        {"type":"text","value":"T","invert":true,"spaceAfter":16},
+        {"type":"row","columns":[{"text":"a","width":4}],"invert":true,"spaceAfter":8},
+        {"type":"divider","spaceAfter":4}
+      ]}"""
+    )
+    assertEquals(
+      listOf(
+        PrintElement.Text("T", invert = true, spaceAfter = 16),
+        PrintElement.Row(listOf(Column("a", 4)), invert = true, spaceAfter = 8),
+        PrintElement.Divider('-', spaceAfter = 4),
+      ),
+      job.elements,
+    )
+  }
+
+  @Test
   fun `applies defaults for an 80mm printer`() {
     val job = JobParser.job("""{"elements":[{"type":"text","value":"Hi"}]}""")
     assertEquals(PrinterProfile(576, 48, CodePage.PC437), job.profile)
@@ -74,6 +93,14 @@ class JobParserTest {
 class TextLayoutTest {
 
   @Test
+  fun `inverted text spans the full line`() {
+    val line = TextLayout.text(PrintElement.Text("Hi", Align.CENTER, invert = true), 8).single()
+    assertTrue(line.invert)
+    assertEquals(Align.LEFT, line.align)
+    assertEquals("   Hi   ", line.segments.joinToString("") { it.text })
+  }
+
+  @Test
   fun `wraps on words and splits words longer than the line`() {
     assertEquals(listOf("Coffee is", "good"), TextLayout.wrap("Coffee is good", 10))
     assertEquals(listOf("abcd", "ef"), TextLayout.wrap("abcdef", 4))
@@ -120,6 +147,25 @@ class TextLayoutTest {
 }
 
 class ReceiptRendererTest {
+
+  @Test
+  fun `inverted images get a padded black band and spacing below`() {
+    val rasterizer = FakeRasterizer(height = 10)
+    val blocks = ReceiptRenderer(profile, RenderMode.IMAGE, rasterizer)
+      .render(listOf(PrintElement.Text("x", invert = true, spaceAfter = 8)))
+    val image = (blocks.single() as Block.Image).image
+    assertEquals(6 + 10 + 6 + 8, image.height)
+    assertTrue(image[0, 0]) // band
+    assertTrue(image[575, 21]) // band, last row
+    assertFalse(image[0, 22]) // spacing stays white
+  }
+
+  @Test
+  fun `spacing after printer text is a dot feed`() {
+    val blocks = ReceiptRenderer(profile, RenderMode.TEXT, FakeRasterizer())
+      .render(listOf(PrintElement.Text("x", spaceAfter = 12)))
+    assertEquals(Block.Space(12), blocks[1])
+  }
 
   @Test
   fun `bill starts at the first black dot`() {
@@ -183,6 +229,20 @@ class ReceiptRendererTest {
 }
 
 class EscPosEncoderTest {
+
+  @Test
+  fun `inverted lines are wrapped in reverse mode`() {
+    val out = EscPosEncoder(PrinterProfile())
+      .encode(listOf(Block.Text(listOf(TextLine(listOf(Segment("A")), invert = true))))).drop(5)
+    assertEquals(bytes(0x1B, 0x61, 0, 0x1D, 0x42, 1).toList(), out.take(6))
+    assertEquals(bytes(0x1D, 0x42, 0, 0x0A).toList(), out.takeLast(4))
+  }
+
+  @Test
+  fun `space feeds in dots`() {
+    val out = EscPosEncoder(PrinterProfile()).encode(listOf(Block.Space(300))).drop(5)
+    assertEquals(bytes(0x1B, 0x4A, 255, 0x1B, 0x4A, 45).toList(), out)
+  }
 
   private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
 

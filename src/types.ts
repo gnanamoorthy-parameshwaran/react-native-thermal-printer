@@ -8,6 +8,10 @@ export type TextElement = {
   underline?: boolean;
   /** 2 prints double width and height. */
   size?: 1 | 2;
+  /** White text on a full-width black band. */
+  invert?: boolean;
+  /** Blank paper below, in dots (8 dots = 1 mm). */
+  spaceAfter?: number;
 };
 
 export type Column = {
@@ -19,8 +23,20 @@ export type Column = {
   underline?: boolean;
 };
 
-export type RowElement = { type: 'row'; columns: Column[] };
-export type DividerElement = { type: 'divider'; char?: string };
+export type RowElement = {
+  type: 'row';
+  columns: Column[];
+  /** White text on a full-width black band. */
+  invert?: boolean;
+  /** Blank paper below, in dots (8 dots = 1 mm). */
+  spaceAfter?: number;
+};
+export type DividerElement = {
+  type: 'divider';
+  char?: string;
+  /** Blank paper below, in dots (8 dots = 1 mm). */
+  spaceAfter?: number;
+};
 export type FeedElement = { type: 'feed'; lines?: number };
 /** Feeds to the cutter and cuts; no extra feeds needed before it. */
 export type CutElement = { type: 'cut' };

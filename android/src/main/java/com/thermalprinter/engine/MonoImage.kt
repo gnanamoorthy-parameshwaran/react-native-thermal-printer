@@ -12,6 +12,10 @@ class MonoImage(val width: Int, val height: Int, val data: ByteArray) {
   operator fun get(x: Int, y: Int): Boolean =
     data[y * bytesPerRow + x / 8].toInt() and (0x80 ushr (x % 8)) != 0
 
+  /** Swaps black and white, for white-on-black bands. */
+  fun inverted(): MonoImage =
+    MonoImage(width, height, ByteArray(data.size) { (data[it].toInt() xor 0xFF).toByte() })
+
   /** Drops blank rows above the first black dot. A fully blank image is returned unchanged. */
   fun trimTop(): MonoImage {
     val first = (0 until height).firstOrNull { y ->

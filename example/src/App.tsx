@@ -20,43 +20,102 @@ import {
   type RowElement,
 } from 'react-native-thermal-printer';
 
-// 80mm paper: 48 columns. Item 22 + Qty 6 + Rate 9 + Amount 11 = 48.
-const item = (
-  name: string,
-  qty: string,
-  rate: string,
-  amount: string
-): RowElement => ({
-  type: 'row',
-  columns: [
-    { text: name, width: 22 },
-    { text: qty, width: 6, align: 'right' },
-    { text: rate, width: 9, align: 'right' },
-    { text: amount, width: 11, align: 'right' },
-  ],
-});
+type Item = { name: string; qty: number; unit: string; rate: number };
 
-const bill: ReceiptElement[] = [
-  { type: 'text', value: 'அன்னை மளிகை', align: 'center', bold: true, size: 2 },
-  { type: 'text', value: '12, Gandhi Road, Madurai', align: 'center' },
-  { type: 'text', value: 'Bill #1042   01-11-2026 10:42', align: 'center' },
-  { type: 'divider' },
-  item('Item', 'Qty', 'Rate', 'Amount'),
-  { type: 'divider' },
-  item('தக்காளி (Tomato)', '2 kg', '40.00', '80.00'),
-  item('வெங்காயம்', '1 kg', '35.00', '35.00'),
-  item('பொன்னி அரிசி 25 கிலோ மூட்டை', '1', '1450.00', '1450.00'),
-  item('Sugar', '1 kg', '45.00', '45.00'),
-  { type: 'divider' },
+const items: Item[] = [
+  { name: 'தக்காளி (Tomato)', qty: 2, unit: 'kg', rate: 40 },
+  { name: 'வெங்காயம்', qty: 1, unit: 'kg', rate: 35 },
+  { name: 'பொன்னி அரிசி 25 கிலோ மூட்டை', qty: 1, unit: 'bag', rate: 1450 },
+  { name: 'Sugar', qty: 1, unit: 'kg', rate: 45 },
+  {
+    name: 'Aashirvaad Select Premium Sharbati Whole Wheat Atta 10 kg',
+    qty: 12,
+    unit: 'pc',
+    rate: 545,
+  },
+  {
+    name: 'ஆச்சி சாம்பார் பொடி மற்றும் ரசப் பொடி காம்போ பேக் 500 கிராம்',
+    qty: 3,
+    unit: 'pc',
+    rate: 120,
+  },
+];
+
+const money = (n: number) =>
+  n.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+// 80mm paper is 48 columns. Each item takes two lines: a numbered, bold name, then the
+// quantity and rate under it with the amount on the right, and a gap before the next item.
+const itemLines = (item: Item, index: number): RowElement[] => [
   {
     type: 'row',
     columns: [
-      { text: 'மொத்தம்', width: 30, bold: true },
-      { text: '₹1610.00', width: 18, align: 'right', bold: true },
+      { text: `${index + 1}.`, width: 4 },
+      { text: item.name, width: 44, bold: true },
     ],
   },
-  { type: 'divider', char: '=' },
+  {
+    type: 'row',
+    spaceAfter: 12,
+    columns: [
+      { text: '', width: 4 },
+      { text: `${item.qty} ${item.unit} x ${money(item.rate)}`, width: 28 },
+      { text: money(item.qty * item.rate), width: 16, align: 'right' },
+    ],
+  },
+];
+
+const total = items.reduce((sum, i) => sum + i.qty * i.rate, 0);
+
+const bill: ReceiptElement[] = [
+  {
+    type: 'text',
+    value: 'அன்னை மளிகை',
+    align: 'center',
+    bold: true,
+    size: 2,
+    invert: true,
+    spaceAfter: 8,
+  },
+  { type: 'text', value: '12, Gandhi Road, Madurai', align: 'center' },
+  {
+    type: 'text',
+    value: 'Ph: 98765 43210',
+    align: 'center',
+    spaceAfter: 8,
+  },
+  {
+    type: 'row',
+    columns: [
+      { text: 'Bill #1042', width: 24, bold: true },
+      { text: '01-11-2026 10:42', width: 24, align: 'right' },
+    ],
+  },
+  { type: 'divider', spaceAfter: 8 },
+  ...items.flatMap(itemLines),
+  { type: 'divider' },
+  {
+    type: 'row',
+    spaceAfter: 6,
+    columns: [
+      { text: `${items.length} items`, width: 24 },
+      { text: `Subtotal ${money(total)}`, width: 24, align: 'right' },
+    ],
+  },
+  {
+    type: 'row',
+    invert: true,
+    spaceAfter: 16,
+    columns: [
+      { text: 'மொத்தம் TOTAL', width: 24, bold: true },
+      { text: `₹ ${money(total)}`, width: 24, align: 'right', bold: true },
+    ],
+  },
   { type: 'text', value: 'நன்றி! மீண்டும் வருக', align: 'center' },
+  { type: 'text', value: 'Thank you, visit again', align: 'center' },
   { type: 'cut' },
 ];
 

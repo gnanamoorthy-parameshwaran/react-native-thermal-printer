@@ -56,6 +56,8 @@ object JobParser {
         align = enumValue(json.optString("align", "left")),
         style = style(json),
         size = json.optInt("size", 1).also { require(it in 1..2) { "text size must be 1 or 2" } },
+        invert = json.optBoolean("invert", false),
+        spaceAfter = spaceAfter(json),
       )
       "row" -> {
         val array = json.getJSONArray("columns")
@@ -65,10 +67,11 @@ object JobParser {
         require(total <= profile.charsPerLine) {
           "row columns are $total chars wide but the paper fits ${profile.charsPerLine}"
         }
-        PrintElement.Row(columns)
+        PrintElement.Row(columns, json.optBoolean("invert", false), spaceAfter(json))
       }
       "divider" -> PrintElement.Divider(
-        json.optString("char", "-").also { require(it.isNotEmpty()) { "divider char must not be empty" } }[0]
+        json.optString("char", "-").also { require(it.isNotEmpty()) { "divider char must not be empty" } }[0],
+        spaceAfter(json),
       )
       "feed" -> PrintElement.Feed(
         json.optInt("lines", 1).also { require(it in 1..255) { "feed lines must be 1-255" } }
@@ -83,6 +86,9 @@ object JobParser {
     align = enumValue(json.optString("align", "left")),
     style = style(json),
   )
+
+  private fun spaceAfter(json: JSONObject) =
+    json.optInt("spaceAfter", 0).also { require(it in 0..1000) { "spaceAfter must be 0-1000 dots" } }
 
   private fun style(json: JSONObject) =
     TextStyle(bold = json.optBoolean("bold", false), underline = json.optBoolean("underline", false))
