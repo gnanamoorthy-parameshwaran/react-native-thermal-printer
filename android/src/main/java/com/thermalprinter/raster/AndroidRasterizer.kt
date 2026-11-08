@@ -109,10 +109,16 @@ class AndroidRasterizer(
   }
 
   /**
-   * Shrinks [paint] so the widest word fits [width], down to [MIN_SCALE]; past that, words break.
-   * Keeps numbers like 99999.00 whole and inside their column.
+   * Shrinks [paint] so a cell that only just overflows stays on one line, or else so the widest
+   * word fits [width], down to [MIN_SCALE]; past that, words break. Keeps "1 bag x 1,450.00" on
+   * one line on narrow paper and numbers like 99999.00 whole and inside their column.
    */
   private fun fitted(text: String, paint: TextPaint, width: Int): TextPaint {
+    val full = paint.measureText(text)
+    if (full > width && full * NEAR_FIT <= width) {
+      paint.textSize *= width / full * 0.96f
+      return paint
+    }
     val widest = text.split(Regex("\\s+")).maxOfOrNull { paint.measureText(it) } ?: return paint
     if (widest <= width) return paint
     // A little under the exact ratio: StaticLayout's rounding wraps a word that fits exactly.

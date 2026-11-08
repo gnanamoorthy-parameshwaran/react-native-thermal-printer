@@ -33,11 +33,22 @@ object TextLayout {
   }
 
   fun row(row: PrintElement.Row): List<TextLine> {
-    val wrapped = row.columns.map { wrap(it.text, it.width) }
+    // Inverted rows keep one blank char inside each end, so text doesn't touch the band's edges.
+    val last = row.columns.lastIndex
+    fun inset(c: Int) = if (row.invert && row.columns[c].width > 1 && (c == 0 || c == last)) 1 else 0
+    val wrapped = row.columns.mapIndexed { c, column -> wrap(column.text, column.width - inset(c)) }
     val count = wrapped.maxOf { it.size }
     return (0 until count).map { i ->
       TextLine(
-        row.columns.flatMapIndexed { c, column -> cell(wrapped[c].getOrElse(i) { "" }, column) },
+        row.columns.flatMapIndexed { c, column ->
+          val text = wrapped[c].getOrElse(i) { "" }
+          val cell = cell(text, column.copy(width = column.width - inset(c)))
+          when {
+            inset(c) == 0 -> cell
+            c == 0 -> listOf(Segment(" ")) + cell
+            else -> cell + Segment(" ")
+          }
+        },
         invert = row.invert,
       )
     }

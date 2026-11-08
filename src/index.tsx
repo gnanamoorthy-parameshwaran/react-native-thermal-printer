@@ -22,6 +22,12 @@ export const PAPER_58MM: PrinterProfile = {
   codePage: 'PC437',
 };
 
+export const PAPER_112MM: PrinterProfile = {
+  dotsPerLine: 832,
+  charsPerLine: 69,
+  codePage: 'PC437',
+};
+
 const job = (elements: ReceiptElement[], options: PrintOptions = {}) =>
   JSON.stringify({
     mode: options.mode ?? 'auto',

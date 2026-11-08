@@ -61,13 +61,10 @@ object JobParser {
       )
       "row" -> {
         val array = json.getJSONArray("columns")
-        val columns = (0 until array.length()).map { column(array.getJSONObject(it)) }
-        require(columns.isNotEmpty()) { "row needs at least one column" }
-        val total = columns.sumOf { it.width }
-        require(total <= profile.charsPerLine) {
-          "row columns are $total chars wide but the paper fits ${profile.charsPerLine}"
-        }
-        PrintElement.Row(columns, json.optBoolean("invert", false), spaceAfter(json))
+        val specs = (0 until array.length()).map { array.getJSONObject(it) }
+        require(specs.isNotEmpty()) { "row needs at least one column" }
+        val widths = widths(specs, profile.charsPerLine)
+        PrintElement.Row(specs.zip(widths, ::column), json.optBoolean("invert", false), spaceAfter(json))
       }
       "divider" -> PrintElement.Divider(
         json.optString("char", "-").also { require(it.isNotEmpty()) { "divider char must not be empty" } }[0],
@@ -80,9 +77,43 @@ object JobParser {
       else -> throw IllegalArgumentException("unknown element type '$type'")
     }
 
-  private fun column(json: JSONObject) = Column(
+  /**
+   * Resolves column widths in chars. A column has a fixed `width` or a `flex` share (default 1) of
+   * what fixed columns leave, so one layout fits any paper. Rows with flex columns fill the line.
+   */
+  internal fun widths(specs: List<JSONObject>, charsPerLine: Int): List<Int> {
+    val fixed = specs.map { spec ->
+      if (spec.has("width")) spec.getInt("width").also { require(it > 0) { "column width must be > 0" } } else null
+    }
+    val flex = specs.map { spec ->
+      if (spec.has("width")) 0.0 else spec.optDouble("flex", 1.0).also { require(it > 0) { "column flex must be > 0" } }
+    }
+    val fixedTotal = fixed.sumOf { it ?: 0 }
+    val flexCount = fixed.count { it == null }
+    require(fixedTotal + flexCount <= charsPerLine) {
+      "row columns are ${fixedTotal + flexCount} chars wide but the paper fits $charsPerLine"
+    }
+    if (flexCount == 0) return fixed.map { it!! }
+
+    // Floor each share (at least 1 char), then hand leftover chars to the largest remainders.
+    val free = charsPerLine - fixedTotal
+    val totalFlex = flex.sum()
+    val exact = flex.map { it / totalFlex * free }
+    val widths = fixed.mapIndexed { i, w -> w ?: maxOf(1, exact[i].toInt()) }.toMutableList()
+    val flexIndices = specs.indices.filter { fixed[it] == null }
+    var spare = free - flexIndices.sumOf { widths[it] }
+    while (spare < 0) {
+      val i = flexIndices.filter { widths[it] > 1 }.maxBy { widths[it] - exact[it] }
+      widths[i]--
+      spare++
+    }
+    for (i in flexIndices.sortedByDescending { exact[it] - widths[it] }.take(spare)) widths[i]++
+    return widths
+  }
+
+  private fun column(json: JSONObject, width: Int) = Column(
     text = json.getString("text"),
-    width = json.getInt("width").also { require(it > 0) { "column width must be > 0" } },
+    width = width,
     align = enumValue(json.optString("align", "left")),
     style = style(json),
   )

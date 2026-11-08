@@ -21,6 +21,44 @@ private class FakeRasterizer(private val height: Int = 10) : Rasterizer {
 
 class JobParserTest {
 
+  private fun widths(columns: String, chars: Int) =
+    JobParser.widths(org.json.JSONArray(columns).let { a -> (0 until a.length()).map(a::getJSONObject) }, chars)
+
+  @Test
+  fun `flex columns share the line and always fill it`() {
+    assertEquals(listOf(36, 12), widths("""[{"flex":3},{"flex":1}]""", 48))
+    assertEquals(listOf(24, 8), widths("""[{"flex":3},{"flex":1}]""", 32))
+    assertEquals(listOf(11, 11, 10), widths("""[{},{},{}]""", 32))
+    for (chars in listOf(32, 42, 48, 69)) {
+      assertEquals(chars, widths("""[{"width":3},{"flex":2},{"flex":1.5},{"flex":1}]""", chars).sum())
+    }
+  }
+
+  @Test
+  fun `fixed columns keep their width next to flex columns`() {
+    assertEquals(listOf(4, 28), widths("""[{"width":4},{"flex":1}]""", 32))
+    assertEquals(listOf(4, 44), widths("""[{"width":4},{"flex":1}]""", 48))
+  }
+
+  @Test
+  fun `every flex column gets at least one char`() {
+    assertEquals(listOf(30, 1, 1), widths("""[{"flex":100},{"flex":1},{"flex":1}]""", 32))
+  }
+
+  @Test(expected = IllegalArgumentException::class)
+  fun `rejects rows whose fixed widths leave no room for flex columns`() {
+    widths("""[{"width":32},{"flex":1}]""", 32)
+  }
+
+  @Test
+  fun `a flex row parses on any paper`() {
+    val row = """{"type":"row","columns":[{"text":"Item","flex":3},{"text":"9.00","flex":1,"align":"right"}]}"""
+    for ((dots, chars) in listOf(384 to 32, 576 to 48)) {
+      val job = JobParser.job("""{"profile":{"dotsPerLine":$dots,"charsPerLine":$chars},"elements":[$row]}""")
+      assertEquals(chars, (job.elements.single() as PrintElement.Row).columns.sumOf { it.width })
+    }
+  }
+
   @Test
   fun `parses invert and spacing`() {
     val job = JobParser.job(
@@ -91,6 +129,14 @@ class JobParserTest {
 }
 
 class TextLayoutTest {
+
+  @Test
+  fun `inverted rows keep a blank char inside each end`() {
+    val row = PrintElement.Row(listOf(Column("TOTAL", 8), Column("9.00", 8, Align.RIGHT)), invert = true)
+    val line = TextLayout.row(row).single()
+    assertEquals(" TOTAL     9.00 ", line.segments.joinToString("") { it.text })
+    assertEquals(16, line.length)
+  }
 
   @Test
   fun `inverted text spans the full line`() {

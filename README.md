@@ -31,7 +31,30 @@ await printer.print([
 ]);
 ```
 
-Defaults are 80mm paper (576 dots, 48 characters) and `auto` mode. Pass `{ profile: PAPER_58MM }` for 58mm printers.
+Defaults are 80mm paper (576 dots, 48 characters) and `auto` mode.
+
+### Paper sizes
+
+Pass a profile for other printers: `PAPER_58MM` (384 dots, 32 chars), `PAPER_80MM` or `PAPER_112MM` (832 dots, 69 chars). For anything else, set `dotsPerLine` and `charsPerLine` yourself; the printer's self-test page usually lists its dots per line.
+
+```ts
+const printer = createPrinter(
+  { host: '192.168.1.23' },
+  { profile: PAPER_58MM }
+);
+```
+
+To make one bill layout fit every paper size, give columns a `flex` share instead of a fixed `width`. Flex columns split whatever space fixed-width columns leave, and a row with any flex column fills the line:
+
+```ts
+columns: [
+  { text: '1.', width: 3 }, // fixed
+  { text: '2 kg x 40.00', flex: 3 }, // 3/5 of the rest
+  { text: '80.00', flex: 2, align: 'right' }, // 2/5
+];
+```
+
+In image mode, a cell that only just overflows its column is drawn slightly smaller rather than wrapping.
 
 ### Render modes
 
@@ -41,7 +64,7 @@ Defaults are 80mm paper (576 dots, 48 characters) and `auto` mode. Pass `{ profi
 | `image`          | Every element as an image                                                                              |
 | `text`           | The printer's own font only; unsupported characters print as `?`                                       |
 
-Column widths are always in characters, so a receipt lays out the same in every mode. Image height is measured from the content, so you never set a page size.
+Column widths are in characters (or `flex` shares), so a receipt lays out the same in every mode. Image height is measured from the content, so you never set a page size.
 
 To use your own font for image text, put it in `android/app/src/main/assets/fonts/` and pass `{ image: { font: 'fonts/NotoSansTamil-Regular.ttf', fontSize: 28 } }`.
 

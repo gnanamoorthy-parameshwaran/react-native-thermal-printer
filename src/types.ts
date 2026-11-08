@@ -16,8 +16,16 @@ export type TextElement = {
 
 export type Column = {
   text: string;
-  /** In characters of the printer's built-in font. A row's widths must fit `charsPerLine`. */
-  width: number;
+  /**
+   * Fixed width in characters of the printer's built-in font. Leave it out to use `flex`, so the
+   * row adapts to the paper.
+   */
+  width?: number;
+  /**
+   * Share of the space fixed-width columns leave (default 1). `flex: 3` next to `flex: 1` takes
+   * three quarters. A row with any flex column fills the paper's width.
+   */
+  flex?: number;
   align?: Align;
   bold?: boolean;
   underline?: boolean;
